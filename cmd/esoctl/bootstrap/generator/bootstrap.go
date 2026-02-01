@@ -23,7 +23,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"text/template"
+
+	"github.com/external-secrets/external-secrets/cmd/esoctl/bootstrap/common"
 )
 
 //go:embed templates/*.tmpl
@@ -89,24 +90,12 @@ func createGeneratorCRD(rootDir string, cfg Config) error {
 	crdFile := filepath.Join(crdDir, fmt.Sprintf("types_%s.go", cfg.PackageName))
 
 	// Check if file already exists
-	if _, err := os.Stat(crdFile); err == nil {
+	if common.FileExists(crdFile) {
 		return fmt.Errorf("CRD file already exists: %s", crdFile)
 	}
 
-	tmplContent, err := templates.ReadFile("templates/crd.go.tmpl")
-	if err != nil {
-		return fmt.Errorf("failed to read template: %w", err)
-	}
-
-	tmpl := template.Must(template.New("crd").Parse(string(tmplContent)))
-	f, err := os.Create(filepath.Clean(crdFile))
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
-
-	if err := tmpl.Execute(f, cfg); err != nil {
-		return err
+	if err := common.CreateFromTemplate(templates, "templates/crd.go.tmpl", crdFile, cfg); err != nil {
+		return fmt.Errorf("failed to create CRD: %w", err)
 	}
 
 	fmt.Printf("✓ Created CRD: %s\n", crdFile)
@@ -115,13 +104,13 @@ func createGeneratorCRD(rootDir string, cfg Config) error {
 
 func createGeneratorImplementation(rootDir string, cfg Config) error {
 	genDir := filepath.Join(rootDir, "generators", "v1", cfg.PackageName)
-	if err := os.MkdirAll(genDir, 0o750); err != nil {
+	if err := common.EnsureDirectory(genDir); err != nil {
 		return err
 	}
 
 	// Create main generator file
 	genFile := filepath.Join(genDir, fmt.Sprintf("%s.go", cfg.PackageName))
-	if _, err := os.Stat(genFile); err == nil {
+	if common.FileExists(genFile) {
 		return fmt.Errorf("implementation file already exists: %s", genFile)
 	}
 
@@ -155,18 +144,7 @@ func createGeneratorImplementation(rootDir string, cfg Config) error {
 }
 
 func createFromTemplate(tmplPath, outputFile string, cfg Config) error {
-	tmplContent, err := templates.ReadFile(tmplPath)
-	if err != nil {
-		return fmt.Errorf("failed to read template %s: %w", tmplPath, err)
-	}
-
-	tmpl := template.Must(template.New(filepath.Base(tmplPath)).Parse(string(tmplContent)))
-	f, err := os.Create(filepath.Clean(outputFile))
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
-	return tmpl.Execute(f, cfg)
+	return common.CreateFromTemplate(templates, tmplPath, outputFile, cfg)
 }
 
 func updateRegisterFile(rootDir string, cfg Config) error {

@@ -14,17 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package generator
 
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/external-secrets/external-secrets/cmd/esoctl/generator"
+	"github.com/external-secrets/external-secrets/cmd/esoctl/bootstrap/common"
 )
 
 var (
@@ -33,33 +32,26 @@ var (
 	generatorPackage     string
 )
 
-func init() {
-	bootstrapCmd.AddCommand(bootstrapGeneratorCmd)
-	bootstrapGeneratorCmd.Flags().StringVar(&generatorName, "name", "", "Name of the generator (e.g., MyGenerator)")
-	bootstrapGeneratorCmd.Flags().StringVar(&generatorDescription, "description", "", "Description of the generator")
-	bootstrapGeneratorCmd.Flags().StringVar(&generatorPackage, "package", "", "Package name (default: lowercase of name)")
-	_ = bootstrapGeneratorCmd.MarkFlagRequired("name")
+// NewGeneratorCommand creates the generator bootstrap command.
+func NewGeneratorCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "generator",
+		Short: "Bootstrap a new generator",
+		Long:  `Bootstrap a new generator with CRD definition and provider implementation.`,
+		RunE:  runGeneratorBootstrap,
+	}
+
+	cmd.Flags().StringVar(&generatorName, "name", "", "Name of the generator (e.g., MyGenerator)")
+	cmd.Flags().StringVar(&generatorDescription, "description", "", "Description of the generator")
+	cmd.Flags().StringVar(&generatorPackage, "package", "", "Package name (default: lowercase of name)")
+	_ = cmd.MarkFlagRequired("name")
+
+	return cmd
 }
 
-var bootstrapCmd = &cobra.Command{
-	Use:   "bootstrap",
-	Short: "Bootstrap new resources for external-secrets",
-	Long:  `Bootstrap new resources like generators for external-secrets operator.`,
-	Run: func(cmd *cobra.Command, _ []string) {
-		_ = cmd.Usage()
-	},
-}
-
-var bootstrapGeneratorCmd = &cobra.Command{
-	Use:   "generator",
-	Short: "Bootstrap a new generator",
-	Long:  `Bootstrap a new generator with CRD definition and provider implementation.`,
-	RunE:  bootstrapGeneratorRun,
-}
-
-func bootstrapGeneratorRun(_ *cobra.Command, _ []string) error {
+func runGeneratorBootstrap(_ *cobra.Command, _ []string) error {
 	// Validate generator name
-	if !regexp.MustCompile(`^[A-Z][a-zA-Z0-9]*$`).MatchString(generatorName) {
+	if !common.ValidatePascalCase(generatorName) {
 		return fmt.Errorf("generator name must be PascalCase and start with an uppercase letter")
 	}
 
@@ -80,13 +72,13 @@ func bootstrapGeneratorRun(_ *cobra.Command, _ []string) error {
 	}
 
 	// Try to find the root directory
-	rootDir := generator.FindRootDir(wd)
+	rootDir := common.FindRootDir(wd)
 	if rootDir == "" {
 		return fmt.Errorf("could not find repository root directory")
 	}
 
 	// Create generator configuration
-	cfg := generator.Config{
+	cfg := Config{
 		GeneratorName: generatorName,
 		PackageName:   generatorPackage,
 		Description:   generatorDescription,
@@ -94,7 +86,7 @@ func bootstrapGeneratorRun(_ *cobra.Command, _ []string) error {
 	}
 
 	// Bootstrap the generator
-	if err := generator.Bootstrap(rootDir, cfg); err != nil {
+	if err := Bootstrap(rootDir, cfg); err != nil {
 		return err
 	}
 

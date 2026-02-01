@@ -16,10 +16,14 @@ limitations under the License.
 
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+
+	"github.com/external-secrets/external-secrets/cmd/esoctl/bootstrap"
+)
 
 func init() {
-	rootCmd.AddCommand(bootstrapCmd)
+	rootCmd.AddCommand(bootstrap.NewBootstrapCommand())
 }
 
 var rootCmd = &cobra.Command{
