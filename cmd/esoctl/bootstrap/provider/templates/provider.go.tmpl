@@ -1,0 +1,294 @@
+/*
+Copyright © 2025 ESO Maintainer Team
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// Package {{.PackageName}} provides {{.Description}} functionality.
+package {{.PackageName}}
+
+import (
+	"context"
+	"fmt"
+
+	esv1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1"
+	"k8s.io/api/admission/v1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	errInvalidStore     = "invalid store configuration"
+	errMissing{{.ProviderName}}Config = "missing {{.ProviderName}} provider configuration"
+	// TODO: Add more error constants as needed
+)
+
+// Provider implements the esv1.Provider interface.
+type Provider struct{}
+
+// Client implements the esv1.SecretsClient interface.
+type Client struct {
+	kube      client.Client
+	store     *esv1.{{.ProviderName}}Provider
+	namespace string
+	// TODO: Add fields for your actual backend client (e.g., HTTP client, SDK client)
+}
+
+// ============================================================================
+// EXPORTED REGISTRATION FUNCTIONS (Required by registration system)
+// ============================================================================
+
+// NewProvider creates a new instance of the Provider.
+func NewProvider() esv1.Provider {
+	return &Provider{}
+}
+
+// ProviderSpec returns the SecretStoreProvider configuration for registration.
+func ProviderSpec() *esv1.SecretStoreProvider {
+	return &esv1.SecretStoreProvider{
+		{{.ProviderName}}: &esv1.{{.ProviderName}}Provider{},
+	}
+}
+
+// MaintenanceStatus returns the maintenance status of this provider.
+func MaintenanceStatus() esv1.MaintenanceStatus {
+	return esv1.MaintenanceStatusMaintained
+}
+
+// ============================================================================
+// PROVIDER INTERFACE IMPLEMENTATION
+// ============================================================================
+
+// Capabilities returns what operations this provider supports.
+func (p *Provider) Capabilities() esv1.SecretStoreCapabilities {
+	// Options: SecretStoreReadOnly, SecretStoreWriteOnly, SecretStoreReadWrite
+	return esv1.SecretStoreReadOnly
+}
+
+// NewClient creates a new SecretsClient for the given store configuration.
+func (p *Provider) NewClient(ctx context.Context, store esv1.GenericStore, kube client.Client, namespace string) (esv1.SecretsClient, error) {
+	// Extract provider-specific configuration
+	storeSpec := store.GetSpec()
+	if storeSpec == nil || storeSpec.Provider == nil || storeSpec.Provider.{{.ProviderName}} == nil {
+		return nil, fmt.Errorf("%s: %s", errInvalidStore, errMissing{{.ProviderName}}Config)
+	}
+
+	providerSpec := storeSpec.Provider.{{.ProviderName}}
+
+	// TODO: Validate required fields
+	// Example:
+	// if providerSpec.ServerURL == "" {
+	//     return nil, fmt.Errorf("serverUrl is required")
+	// }
+
+	// TODO: Retrieve authentication credentials from Kubernetes secrets
+	// Example for API key:
+	// if providerSpec.Auth.APIKey != nil {
+	//     apiKey, err := getSecretValue(ctx, kube, namespace, providerSpec.Auth.APIKey)
+	//     if err != nil {
+	//         return nil, fmt.Errorf("failed to get API key: %w", err)
+	//     }
+	//     // Use apiKey to initialize your backend client
+	// }
+
+	// TODO: Initialize your actual backend client (HTTP, SDK, etc.)
+
+	return &Client{
+		kube:      kube,
+		store:     providerSpec,
+		namespace: namespace,
+	}, nil
+}
+
+// ValidateStore validates the SecretStore configuration.
+func (p *Provider) ValidateStore(store esv1.GenericStore) (v1.Warnings, error) {
+	storeSpec := store.GetSpec()
+	if storeSpec == nil || storeSpec.Provider == nil || storeSpec.Provider.{{.ProviderName}} == nil {
+		return nil, fmt.Errorf("%s: %s", errInvalidStore, errMissing{{.ProviderName}}Config)
+	}
+
+	providerSpec := storeSpec.Provider.{{.ProviderName}}
+
+	// TODO: Add validation logic for your provider configuration
+	// Example:
+	// if providerSpec.ServerURL == "" {
+	//     return nil, fmt.Errorf("serverUrl is required")
+	// }
+
+	// Return warnings for non-fatal issues
+	var warnings v1.Warnings
+	// Example: warnings = append(warnings, "Consider enabling TLS")
+
+	_ = providerSpec // Remove this line once you add validation
+
+	return warnings, nil
+}
+
+// ============================================================================
+// SECRETSCLIENT INTERFACE IMPLEMENTATION
+// ============================================================================
+
+// GetSecret retrieves a single secret value from the provider.
+func (c *Client) GetSecret(ctx context.Context, ref esv1.ExternalSecretDataRemoteRef) ([]byte, error) {
+	// TODO: Implement secret retrieval logic
+	// - Use ref.Key to identify the secret
+	// - Use ref.Property to extract a specific field (optional)
+	// - Use ref.Version to get a specific version (optional)
+	// - Return esv1.NoSecretErr{} if secret doesn't exist
+	//
+	// Example implementation:
+	// secret, err := c.backendClient.GetSecret(ctx, ref.Key)
+	// if err != nil {
+	//     if isNotFound(err) {
+	//         return nil, esv1.NoSecretErr{}
+	//     }
+	//     return nil, fmt.Errorf("failed to get secret: %w", err)
+	// }
+	//
+	// if ref.Property != "" {
+	//     return extractProperty(secret, ref.Property)
+	// }
+	//
+	// return secret, nil
+
+	_ = ctx
+	_ = ref
+
+	return nil, fmt.Errorf("GetSecret not implemented")
+}
+
+// GetSecretMap retrieves multiple key-value pairs from a single secret.
+func (c *Client) GetSecretMap(ctx context.Context, ref esv1.ExternalSecretDataRemoteRef) (map[string][]byte, error) {
+	// TODO: Implement secret map retrieval
+	// - Fetch the secret identified by ref.Key
+	// - Return all key-value pairs as a map
+	// - Return esv1.NoSecretErr{} if secret doesn't exist
+
+	_ = ctx
+	_ = ref
+
+	return nil, fmt.Errorf("GetSecretMap not implemented")
+}
+
+// GetAllSecrets retrieves multiple secrets based on search criteria.
+func (c *Client) GetAllSecrets(ctx context.Context, ref esv1.ExternalSecretFind) (map[string][]byte, error) {
+	// TODO: Implement search functionality
+	// - Use ref.Name to filter by name (supports regex)
+	// - Use ref.Tags to filter by tags/labels
+	// - Use ref.Path to limit search scope
+	// - Return all matching secrets as a map
+
+	_ = ctx
+	_ = ref
+
+	return nil, fmt.Errorf("GetAllSecrets not implemented")
+}
+
+// PushSecret writes a secret to the provider.
+func (c *Client) PushSecret(ctx context.Context, secret *corev1.Secret, data esv1.PushSecretData) error {
+	// TODO: Implement secret writing logic
+	// - Extract secret value from data.GetSecretKey()
+	// - Get remote reference from data.GetRemoteKey()
+	// - Write to backend
+	//
+	// Example:
+	// value := secret.Data[data.GetSecretKey()]
+	// remoteKey := data.GetRemoteKey()
+	// return c.backendClient.PutSecret(ctx, remoteKey, value)
+
+	_ = ctx
+	_ = secret
+	_ = data
+
+	return fmt.Errorf("PushSecret not implemented (provider is read-only)")
+}
+
+// DeleteSecret removes a secret from the provider.
+func (c *Client) DeleteSecret(ctx context.Context, remoteRef esv1.PushSecretRemoteRef) error {
+	// TODO: Implement secret deletion logic
+	// - Use remoteRef.GetRemoteKey() to identify the secret
+	// - Delete from backend
+
+	_ = ctx
+	_ = remoteRef
+
+	return fmt.Errorf("DeleteSecret not implemented (provider is read-only)")
+}
+
+// SecretExists checks if a secret exists at the given location.
+func (c *Client) SecretExists(ctx context.Context, remoteRef esv1.PushSecretRemoteRef) (bool, error) {
+	// TODO: Implement existence check
+	// - Use remoteRef.GetRemoteKey() to identify the secret
+	// - Return true if exists, false otherwise
+	// - Return error only for actual failures (not for "not found")
+
+	_ = ctx
+	_ = remoteRef
+
+	return false, fmt.Errorf("SecretExists not implemented")
+}
+
+// Validate checks if the client is configured correctly and can connect.
+func (c *Client) Validate() (esv1.ValidationResult, error) {
+	// TODO: Implement connectivity/health check
+	// - Attempt to connect to the backend
+	// - Validate credentials
+	// - Return ValidationResultReady if successful
+	// - Return ValidationResultError with error details if failed
+	//
+	// Example:
+	// err := c.backendClient.Ping(context.Background())
+	// if err != nil {
+	//     return esv1.ValidationResultError, fmt.Errorf("connection failed: %w", err)
+	// }
+	// return esv1.ValidationResultReady, nil
+
+	return esv1.ValidationResultUnknown, nil
+}
+
+// Close cleans up any resources used by the client.
+func (c *Client) Close(ctx context.Context) error {
+	// TODO: Clean up resources
+	// - Close HTTP clients
+	// - Close database connections
+	// - Release any other resources
+
+	_ = ctx
+
+	return nil
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+// getSecretValue retrieves a value from a Kubernetes secret.
+func getSecretValue(ctx context.Context, kube client.Client, namespace string, selector *esv1.SecretKeySelector) (string, error) {
+	secret := &corev1.Secret{}
+	ref := client.ObjectKey{
+		Namespace: namespace,
+		Name:      selector.Name,
+	}
+
+	err := kube.Get(ctx, ref, secret)
+	if err != nil {
+		return "", fmt.Errorf("failed to get secret %s: %w", selector.Name, err)
+	}
+
+	value, ok := secret.Data[selector.Key]
+	if !ok {
+		return "", fmt.Errorf("key %s not found in secret %s", selector.Key, selector.Name)
+	}
+
+	return string(value), nil
+}

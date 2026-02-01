@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/external-secrets/external-secrets/cmd/esoctl/bootstrap/generator"
+	"github.com/external-secrets/external-secrets/cmd/esoctl/bootstrap/provider"
 )
 
 // NewBootstrapCommand creates the bootstrap command with all subcommands.
@@ -28,7 +29,7 @@ func NewBootstrapCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bootstrap",
 		Short: "Bootstrap new resources for external-secrets",
-		Long:  `Bootstrap new resources like generators for external-secrets operator.`,
+		Long:  `Bootstrap new resources like generators and providers for external-secrets operator.`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			_ = cmd.Usage()
 		},
@@ -36,6 +37,7 @@ func NewBootstrapCommand() *cobra.Command {
 
 	// Register subcommands
 	cmd.AddCommand(generator.NewGeneratorCommand())
+	cmd.AddCommand(provider.NewProviderCommand())
 
 	return cmd
 }
